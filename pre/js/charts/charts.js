@@ -1,30 +1,23 @@
 //Desarrollo de las visualizaciones
 import * as d3 from 'd3';
-//import { numberWithCommas2 } from './helpers';
-//import { getInTooltip, getOutTooltip, positionTooltip } from './modules/tooltip';
+import { numberWithCommas3 } from '../helpers';
+import { getInTooltip, getOutTooltip, positionTooltip } from '../modules/tooltip';
 import { setChartHeight } from '../modules/height';
 import { setChartCanvas, setChartCanvasImage } from '../modules/canvas-image';
 import { setRRSSLinks } from '../modules/rrss';
 import { setFixedIframeUrl } from './chart_helpers';
 
 //Colores fijos
-const COLOR_PRIMARY_1 = '#F8B05C', 
-COLOR_PRIMARY_2 = '#E37A42', 
-COLOR_ANAG_1 = '#D1834F', 
-COLOR_ANAG_2 = '#BF2727', 
-COLOR_COMP_1 = '#528FAD', 
-COLOR_COMP_2 = '#AADCE0', 
-COLOR_GREY_1 = '#B5ABA4', 
-COLOR_GREY_2 = '#64605A', 
-COLOR_OTHER_1 = '#B58753', 
-COLOR_OTHER_2 = '#731854';
+const COLOR_PRIMARY_1 = '#F8B05C',
+COLOR_COMP_1 = '#528FAD';
+let tooltip = d3.select('#tooltip');
 
 export function initChart(iframe) {
     ///Lectura de datos
     d3.csv('https://raw.githubusercontent.com/CarlosMunozDiazCSIC/informe_perfil_mayores_2022_salud_2_8/main/data/tasas_mortalidad_sexo_edad_2020.csv', function(error,data) {
         if (error) throw error;
 
-        let margin = {top: 10, right: 30, bottom: 20, left: 50},
+        let margin = {top: 5, right: 30, bottom: 25, left: 50},
             width = document.getElementById('chart').clientWidth - margin.left - margin.right,
             height = document.getElementById('chart').clientHeight - margin.top - margin.bottom;
 
@@ -40,10 +33,27 @@ export function initChart(iframe) {
 
         let x = d3.scaleLinear()
             .domain([0,35000])
-            .range([0,width]);        
+            .range([0,width]);
+        
+        let ticks = 6;
+        if(document.body.clientWidth < 560) {
+            ticks = 3;
+        }
 
         let xAxis = function(g) {
-            g.call(d3.axisBottom(x));
+            g.call(d3.axisBottom(x).ticks(ticks).tickFormat(function(d,i) { return numberWithCommas3(d); }));
+            g.call(function(g) {
+                g.call(function(g){
+                    g.selectAll('.tick line')
+                        .attr('class', function(d,i) {
+                            if (d == 0) {
+                                return 'line-special';
+                            }
+                        })
+                        .attr('y1', '0')
+                        .attr('y2', `-${height}`)
+                });
+            });
         }
 
         svg.append("g")
@@ -54,9 +64,15 @@ export function initChart(iframe) {
             .domain(edades)
             .range([height,0])
             .padding(0.35);
+
+        let yAxis = function(g) {
+            g.call(d3.axisLeft(y));
+            g.call(function(g){g.selectAll('.tick line').remove()});
+            g.call(function(g){g.select('.domain').remove()});
+        }
         
         svg.append("g")
-            .call(d3.axisLeft(y));
+            .call(yAxis);
 
         let ySubgroup = d3.scaleBand()
             .domain(tipos)
@@ -73,16 +89,57 @@ export function initChart(iframe) {
                 .enter()
                 .append("g")
                 .attr("transform", function(d) { return "translate(0," + y(d.Edad_2) + ")"; })
+                .attr('class', function(d) {
+                    return 'grupo_' + d.Edad_2;
+                })
                 .selectAll("rect")
                 .data(function(d) { return tipos.map(function(key) { return {key: key, value: d[key]}; }); })
                 .enter()
                 .append("rect")
-                .attr('class', 'prueba')
+                .attr('class', function(d) {
+                    return 'rect rect_' + d.key;
+                })
                 .attr('y', function(d) { return ySubgroup(d.key); })
                 .attr('height', ySubgroup.bandwidth())
                 .attr("fill", function(d) { return color(d.key); })
                 .attr('x', x(0))
                 .attr('width', x(0))
+                .on('mouseover', function(d,i,e) {
+                    //Opacidad en barras
+                    let css = e[i].getAttribute('class').split(' ')[1];
+                    let bars = svg.selectAll('.rect');                    
+            
+                    bars.each(function() {
+                        this.style.opacity = '0.4';
+                        let split = this.getAttribute('class').split(" ")[1];
+                        if(split == `${css}`) {
+                            this.style.opacity = '1';
+                        }
+                    });
+
+                    //Tooltip > Recuperamos el año de referencia
+                    let currentAge = this.parentNode.classList.value;
+
+                    let html = '<p class="chart__tooltip--title">Grupo edad: ' + currentAge.split('_')[1] + '</p>' + 
+                            '<p class="chart__tooltip--text">La tasa de mortalidad para <b>' + d.key.split('_')[0].toLowerCase() + '</b> en este grupo de edad es de <b>' + numberWithCommas3(parseFloat(d.value)) + '</b> por cada 100.000 habitantes de este grupo y sexo</p>';
+                    
+                    tooltip.html(html);
+
+                    //Tooltip
+                    positionTooltip(window.event, tooltip);
+                    getInTooltip(tooltip);
+
+                })
+                .on('mouseout', function(d,i,e) {
+                    //Quitamos los estilos de la línea
+                    let bars = svg.selectAll('.rect');
+                    bars.each(function() {
+                        this.style.opacity = '1';
+                    });
+                
+                    //Quitamos el tooltip
+                    getOutTooltip(tooltip); 
+                })
                 .transition()
                 .duration(2000)
                 .attr('x', function(d) { return x(0); })
@@ -90,7 +147,7 @@ export function initChart(iframe) {
         }
 
         function animateChart() {
-            svg.selectAll(".prueba")
+            svg.selectAll(".rect")
                 .attr('y', function(d) { return ySubgroup(d.key); })
                 .attr('height', ySubgroup.bandwidth())
                 .attr("fill", function(d) { return color(d.key); })

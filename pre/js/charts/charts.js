@@ -152,11 +152,11 @@ export function initChart() {
                 .attr('height', ySubgroup.bandwidth())
                 .attr("fill", function(d) { return color(d.key); })
                 .attr('x', x(0))
-                .attr('width', width - x(0))
+                .attr('width', x(0))
                 .transition()
                 .duration(2000)
-                .attr('x', function(d) { return x(d.value); })
-                .attr('width', function(d) { return width - x(d.value); });
+                .attr('x', function(d) { return x(0); })
+                .attr('width', function(d) { return x(d.value) -x(0); });
         }
 
         //////

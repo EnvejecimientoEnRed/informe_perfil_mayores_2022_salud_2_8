@@ -17,7 +17,7 @@ export function initChart() {
     d3.csv('https://raw.githubusercontent.com/CarlosMunozDiazCSIC/informe_perfil_mayores_2022_salud_2_8/main/data/tasas_mortalidad_sexo_edad_2020.csv', function(error,data) {
         if (error) throw error;
 
-        let margin = {top: 5, right: 30, bottom: 25, left: 50},
+        let margin = {top: 12.5, right: 30, bottom: 25, left: 50},
             width = document.getElementById('chart').clientWidth - margin.left - margin.right,
             height = document.getElementById('chart').clientHeight - margin.top - margin.bottom;
 

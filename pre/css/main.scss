@@ -111,6 +111,7 @@ button {
             display: flex;
             flex-wrap: wrap;
             
+            width: calc(100% - 141px);
 
             &--item {
                 position: relative;
@@ -470,5 +471,19 @@ button {
 
     .b-rrss {
         width: 80%;
+    }
+}
+
+@media screen and (max-width: 375px) {
+    .b-chart {
+        .chart {
+            &__logics {
+                flex-direction: column;
+            }
+
+            &__legend {
+                width: 100%;
+            }
+        }
     }
 }
